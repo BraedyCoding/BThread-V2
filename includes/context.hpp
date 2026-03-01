@@ -99,7 +99,7 @@ jump to new RIP
 
 //this class will act as our TCB (thread control block)
 #pragma once
-#include "commonMacros.hpp"
+#include "Common-includes\commonMacros.hpp"
 
 class Context{
     reg_t rbx;
@@ -109,13 +109,7 @@ class Context{
     reg_t r14;
     reg_t r15;
     reg_t rsp;
-    reg_t rip;
-
-    public:
-    void save();
-    void load();
-    
-    
+    reg_t rip;  
 }
 
 // //where I am at in the chatGpt conversation:

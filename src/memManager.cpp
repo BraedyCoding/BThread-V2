@@ -1,4 +1,8 @@
-#include "Stack.hpp"
+//Note: This stack only gets used and "grows downward" when teh R14 stack regsister in the CPU 
+//points to the top of the stack. when we push things to the stack, the cpu naturally decrements the stack pointer
+//stored in R14, so we don't actually have to worry about handling the decrementation manually.
+
+#include "context.hpp"
 
 #include <sys/mman.h>
 #include <unistd.h>
@@ -6,9 +10,9 @@
 #include <cstdio>
 
 // helper: round up to nearest multiple of page size
-static size_t page_align(size_t size, size_t page_size)
+static size_t page_align(size_t size)
 {
-    return ((size + page_size - 1) / page_size) * page_size;
+    return ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
 }
 
 Stack::Stack(size_t stack_size)
@@ -17,10 +21,9 @@ Stack::Stack(size_t stack_size)
     page_size = sysconf(_SC_PAGESIZE);
 
     // 2) round requested stack to full pages
-    size = page_align(stack_size, page_size);
-
+    size = page_align(stack_size);
     // 3) allocate guard page + usable stack in ONE mmap call
-    size_t total_size = size + page_size;
+    size_t total_size = size + page_size; //we do size + page_size so we can add the guard page
 
     //base is the logical address of the bottom of the region (which is the part that would be growing downwards in a real stack), and the guard page is at the lowest address of the region. The top of the stack (initial RSP) is at the highest address of the region, which is base + total_size.
     base = mmap(

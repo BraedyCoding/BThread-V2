@@ -1,5 +1,5 @@
 #pragma once
-#include "commonMacros.hpp"
+#include "Common-includes\commonMacros.hpp"
 #include <sys/mman.h>
 #include <unistd.h>   // for sysconf (page size)
 #include <cerrno>
@@ -14,7 +14,7 @@ private:
     size_t page_size;  // system page size
 
 public:
-    Stack(size_t stack_size = 64 * 1024);
+    Stack(size_t stack_size = 64 * 1024); //by default, we will make the page 64kb
     ~Stack();
 
     char* getTop() const;

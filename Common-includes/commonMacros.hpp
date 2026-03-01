@@ -27,12 +27,20 @@
         exit(EXIT_FAILURE); \
     } \
 }
+
 //common aliases for types
 #ifdef __x86_64__
 using reg_t = uint64_t;
+#define offset 8 //offset for 64 bit architecture (we use this in context_switch.s)
 #else
 using reg_t = uint32_t;
+#define offset 4 //offset for 32 bit architecture (we use this in context_switch.s)
 #endif
+
+
+//Page size
+#define PAGE_SIZE sysconf(_SC_PAGESIZE)
+
 
 
 
