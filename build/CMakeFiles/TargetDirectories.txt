@@ -1,3 +1,0 @@
-/mnt/c/Users/ottaw/Downloads/BthreadV2/build/CMakeFiles/bthreads.dir
-/mnt/c/Users/ottaw/Downloads/BthreadV2/build/CMakeFiles/edit_cache.dir
-/mnt/c/Users/ottaw/Downloads/BthreadV2/build/CMakeFiles/rebuild_cache.dir
