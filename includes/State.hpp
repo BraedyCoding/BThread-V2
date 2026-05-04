@@ -1,6 +1,7 @@
 #pragma once
-
+//This file was not used, I will just leave it for now though
 #include <stdio.h>
+#include "CoreTypes.hpp"
 
 /*
 The schuduler will use this to keep track of the state of each thread, 

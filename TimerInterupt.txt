@@ -1,0 +1,92 @@
+
+Right now, in run():
+
+std::this_thread::sleep_for(std::chrono::duration<double>(t->time_quantum));
+yield();
+You let the current thread “run” for its time quantum by literally just sleeping the OS thread.
+Then you manually call yield() to switch to the next thread.
+
+✅ This is cooperative scheduling:
+
+Threads run until they explicitly yield.
+The scheduler only switches threads when yield() is called.
+If a thread never calls yield(), it could hog the CPU indefinitely.
+
+
+PROBLEM:
+🔥 In your case
+
+You are not running real OS threads for each BThread.
+You have:
+
+1 real OS thread (your program)
+Multiple fake/user-level threads (BThread) that you manually switch between using context_switch
+
+So when you call:
+
+std::this_thread::sleep_for(...)
+
+👉 You are pausing the entire program, including:
+
+the scheduler
+all BThreads
+everything
+
+
+
+
+void Scheduler::run() {
+    if (threads.empty()) return;
+
+    current_thread = &threads[0]; // Start with first thread
+
+    if(threads.size() == 1){
+        // If there is only one thread, just run it without yielding
+        current_thread->thread_trampoline(current_thread);
+        if(current_thread->finished)
+        return;
+    }
+
+    //TO-DO: go throw stack frames and make sure this wouldn't cause undefined behavior (RAII)
+    if (threads.size()>MAX_THREADS) {
+        throw std::runtime_error("Exceeded maximum thread limit");
+    }
+
+    // Main scheduling loop
+    //we set all_finsihed = true, and then go through all the threads in the inner loop, if one is not finsihed we set is_finished = false
+    //if we do go through all the threads and if(!t->finished) is never true, then all_finished will remain true and we will break out of the loop and stop the scheduler because all threads are finished
+    while (threads.size() > 1) {
+        bool all_finished = true;
+
+        // Iterate through all threads
+        for (auto t : threads) {
+            if (!t->finished) {
+                all_finished = false;
+                current_thread = t;
+
+                // Sleep for this thread's time quantum
+                std::this_thread::sleep_for(std::chrono::duration<double>(t->time_quantum));
+
+                // Yield to next thread
+                yield();
+            }
+        }
+
+        if (all_finished) break; // Stop when all threads are finished
+    }
+}
+
+
+
+
+
+Summary: the scheduler is suppose to be running from the main thread right, 
+and we want to pause the main thread and go and run the bthread. 
+but the issue was that when we pause the main thread, ince the bthreads 
+aren't registered, then it just pauses them too.
+
+
+
+
+I wonder how crazy it would be to somehow make BOSThread which is built on top of OS threads. 
+So the user has the option to create OS threads and real threads. this could be cool

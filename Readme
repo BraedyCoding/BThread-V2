@@ -1,128 +1,57 @@
-Overview
+# BThread Library
 
-Bthread is a minimal user-space thread library for C++ that mimics the functionality of std::thread. It allows creating, running, and joining threads with cooperative scheduling, and later can be extended with preemptive scheduling and adaptive ML-based scheduling.
+A lightweight cooperative user-level threading library implemented in C++ and x86-64 assembly.  
+This library provides manual context switching, a simple scheduler, and stack-based thread execution.
 
-Step-by-Step Components
-1. Thread Control Block (TCB) / Context
+---
 
-Stores the CPU state of each thread:
+## Overview
 
-Stack pointer (rsp)
+BThread allows you to create and switch between multiple execution contexts (threads) without relying on the OS scheduler.  
+It uses:
 
-Instruction pointer (rip)
+- Manual context switching (register + stack save/restore)
+- Cooperative scheduling via `yield()`
+- A simple round-robin scheduler
+- Assembly-based context switch for full control over CPU state
 
-Callee-saved registers (rbx, rbp, r12–r15)
+---
 
-Thread state (ready, running, finished)
+## Features
 
-Required for switching execution between threads.
+- User-level threads (no kernel involvement)
+- Cooperative multitasking (`yield`)
+- Stack-per-thread execution
+- x86-64 context switching (SysV ABI)
+- Lightweight scheduler
 
-2. Stack Allocation
+---
 
-Allocate separate stacks for each thread.
+## Core Components
 
-Ensure proper alignment and growth direction (x86-64 stacks grow downward).
+### `BThread`
+Represents a single thread of execution.
 
-Stack top is used for thread entry.
+Key fields:
+- `Stack stack` → thread stack memory
+- `Context ctx` → saved CPU registers + stack pointer + instruction pointer
+- `std::function<void()> start_func` → function executed by the thread
+- `bool finished` → indicates if the thread is done
 
-3. Context Switching
+---
 
-Core of the library: saves current thread registers and stack, restores next thread registers and stack.
+### `Context`
+Stores CPU state for a thread:
 
-Requires small inline assembly or external assembly function.
+- General-purpose registers (RBX, RBP, R12–R15)
+- Stack pointer (RSP)
+- Instruction pointer (RIP)
 
-Handles the low-level switching between threads’ execution contexts.
+---
 
-4. Thread Entry / Trampoline
+### `context_switch`
 
-A small function that starts a new thread function on the allocated stack.
+Assembly function responsible for switching execution between threads:
 
-Calls the user-provided function with arguments.
-
-Marks the thread as finished when the function returns.
-
-5. Scheduler / Ready Queue
-
-Manages threads in a queue.
-
-Picks the next thread to run.
-
-Initially cooperative: threads call yield() to allow switching.
-
-Later: can evolve to round-robin or preemptive scheduler.
-
-6. Thread API (Bthread class)
-
-Provides a std::thread-like interface:
-
-Constructor for thread creation
-
-join() to wait for a thread
-
-detach() to allow independent thread execution
-
-Handles stack allocation and TCB setup internally.
-
-7. Cooperative Scheduling
-
-First working version uses cooperative scheduling:
-
-Threads voluntarily yield to allow context switches.
-
-Demonstrate multiple threads interleaving output.
-
-8. Thread Cleanup
-
-Ensure finished threads are properly removed from scheduler.
-
-Deallocate stack memory.
-
-Avoid memory leaks or dangling contexts.
-
-9. Preemptive Scheduling (Advanced)
-
-Use a timer interrupt (e.g., SIGALRM) to trigger automatic context switches.
-
-Scheduler enforces a fixed time quantum per thread.
-
-Adds realism and closer behavior to std::thread.
-
-10. Runtime Statistics (Optional)
-
-Track per-thread CPU usage.
-
-Count voluntary yields and blocked time.
-
-Useful for testing and future ML-based scheduling.
-
-11. ML-Based Adaptive Scheduling (Future)
-
-Collect runtime statistics to feed a small ML model.
-
-Predict optimal time quantums per thread based on behavior.
-
-Dynamically adjust scheduling policy to improve efficiency.
-
-12. Testing & Demonstrations
-
-Write simple tests to:
-
-Print interleaved messages from multiple threads
-
-Validate join() and detach()
-
-Measure round-robin fairness
-
-Verify correct cleanup and stack deallocation
-
-13. Documentation
-
-Document:
-
-API usage
-
-Internal architecture
-
-Context-switch mechanism
-
-Future roadmap for ML scheduler
+```cpp
+void context_switch(Context* current, Context* next);

@@ -1,14 +1,54 @@
-#define <stdio.h>
+#include <cstdio>
 #include "commonMacros.hpp"
+#include "Scheduler.hpp"
+#include "Bthread.hpp"
 
+// -----------------------------
+// Thread functions
+// -----------------------------
+
+void threadA() {
+    for (int i = 0; i < 5; i++) {
+        LOG("[Thread A] iteration %d", i);
+        Scheduler::yield();
+    }
+    LOG("[Thread A] finished");
+}
+
+void threadB() {
+    for (int i = 0; i < 5; i++) {
+        LOG("[Thread B] iteration %d", i);
+        Scheduler::yield();
+    }
+    LOG("[Thread B] finished");
+}
+
+void threadC() {
+    for (int i = 0; i < 5; i++) {
+        LOG("[Thread C] iteration %d", i);
+        Scheduler::yield();
+    }
+    LOG("[Thread C] finished");
+}
+
+// -----------------------------
+// main
+// -----------------------------
 
 int main() {
-    LOG("This is a log message with no additional arguments.");
-    LOG("This is a log message with an integer: %d", 42);
-    
-    
+    LOG("Starting BThread scheduler test");
 
-    //this tells the OS That the process terminated with exit code of 
-   // EXIT_SUCCESS / EXIT_FAILURE
+    BThread t1(threadA);
+    BThread t2(threadB);
+    BThread t3(threadC);
+
+    Scheduler::addThread(t1);
+    Scheduler::addThread(t2);
+    Scheduler::addThread(t3);
+
+    Scheduler::run();
+
+    LOG("Back in main thread (all threads done)");
+
     exit(EXIT_SUCCESS);
 }

@@ -99,9 +99,14 @@ jump to new RIP
 
 //this class will act as our TCB (thread control block)
 #pragma once
-#include "Common-includes\commonMacros.hpp"
+#include "commonMacros.hpp"
+#include "CoreTypes.hpp"
 
-class Context{
+
+//So in the context_switch.S file, we actually use a offset of either 4 or 8 bytes to access the registers
+//so essentially, each register here will actually take up an entire memory word (makes sense because that is how much space a register takes up)
+//And that is why we use offset of 4 or 8 bytes in assembly when physicallly writing values to the instance of this strut
+struct alignas(16) Context {
     reg_t rbx;
     reg_t rbp;
     reg_t r12;
@@ -109,32 +114,47 @@ class Context{
     reg_t r14;
     reg_t r15;
     reg_t rsp;
-    reg_t rip;  
-}
+    reg_t rip;
 
-// //where I am at in the chatGpt conversation:
-// don't we need code to be able to set them? I am just thinking, so a bthread could have an object of context for 
-// example and a stack object. When the PC is executing the code on the stack, it could then when the scheduler 
-// (which is not made yet, switches the PC to something else), we need to be able to maybe save them somewhere. 
-// Not sure if we o save them on the stack as well or in a seperate part of the process. I am asking you because you know 
-// better.
+    //Argument register (we will only use rdi)
+    reg_t rdi;
+};
 
-//chatgpt basically said that in the bthread instance it has a stack and context object.
+//reg_t is an alias for either uint64_t or uint32_t depending on the architecture (32 vs 64 bit architecture)
 
-//class BThread {
-// private:
-//     Stack stack;      // memory stack for this thread
-//     Context ctx;      // saved CPU context
-// };
 
-// When switching threads, you use assembly to:
+//Note: The first field is aligned to the struct’s alignment, 
+//which is usually the same as the largest field’s 
+//alignment — but not guaranteed by “size”
 
-// Save all callee-saved registers + rsp + rip of the current thread → into its ctx struct
+//so, what we did here is we made the entire context object
+//start at a multiple of 16 bytes, that way it works for both 32 bit and 64 bit architectures, because the largest field is either 4 or 8 bytes, so the alignment will be 4 or 8 bytes, and by aligning the entire struct to 16 bytes, we ensure that the first field (rbx) is always at a multiple of 16 bytes, which is what we need for our assembly code to work correctly when we access the fields of this struct.
+// and doing rdi + 0*offset  -> rbx for example will still work.
 
-// Load the registers + rsp + rip of the next thread → from its ctx struct into the CPU registers so that 
-// execution continues from where it left off on that thread's stack.
+// If we are on a 32-bit architecture, even though reg_t is 4 bytes (not 8),
+// the compiler may still insert padding so that the Context object starts
+// at a properly aligned memory address (e.g., 16-byte aligned if alignas(16) is used).
+// This padding is NOT related to "word size", but rather to alignment requirements
+// enforced by the compiler and ABI rules.
 
-//We will have to learn some assembly next!
+
+
+//I had to ask AI why 8byte alignment is not enough, and here is the answer it gave me:
+// ⚠️ Why 8-byte alignment is NOT enough
+
+// 8-byte alignment ensures:
+
+// 64-bit values are aligned ✔
+
+// BUT it does NOT guarantee:
+
+// correct stack alignment after pushes/calls ❌
+// ABI compatibility ❌
+
+// So even though it “matches word size”, it’s incomplete for function execution
+//because the ABI requires the stack to be 16-byte aligned at function entry, and if we only align to 8 bytes, we might end up with a stack pointer that is not properly aligned after certain operations (like pushes or calls), which can lead to crashes or undefined behavior when the thread tries to execute code that expects a 16-byte aligned stack. By using alignas(16), we ensure that the entire Context struct is aligned to 16 bytes, which helps maintain proper stack alignment throughout the thread's execution.
+
+
 
 
 

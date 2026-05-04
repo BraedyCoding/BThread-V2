@@ -25,7 +25,6 @@ and loads registers from new_ctx.
 */
 
 
-
 //So you know labels in assembly, well what C++ does it is adds like a hashed code to each funciton
 //instead of it being just the name. So the compiler would do sometihng like b context_switch_1234
 // or something like that, and then when we want to call it from assembly, 

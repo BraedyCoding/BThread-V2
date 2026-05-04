@@ -1,10 +1,11 @@
 #pragma once
-#include "Common-includes\commonMacros.hpp"
+#include "commonMacros.hpp"
 #include <sys/mman.h>
 #include <unistd.h>   // for sysconf (page size)
 #include <cerrno>
 #include <cstring>
 #include <iostream>
+#include "CoreTypes.hpp"
 
 class Stack {
 private:
@@ -14,7 +15,7 @@ private:
     size_t page_size;  // system page size
 
 public:
-    Stack(size_t stack_size = 64 * 1024); //by default, we will make the page 64kb
+    Stack(size_t stack_size = PAGE_SIZE * 16); //by default, we will make the stack size 16 pages (128KB on x86-64)
     ~Stack();
 
     char* getTop() const;

@@ -1,0 +1,143 @@
+In the context_switch.S file, we don't explicitly save the RIP (PC), instead we save the stack pointer
+because when we call on a funciton, the first thing that it does it is pushes the old PC onto the stack,
+so when we do:
+
+mov [rdi + 6*offset], rsp    ; save stack pointer
+
+we are saving the rsp (register which holds the address to where the stack pointer poitns)
+into the context objects rsp attribute. This address poins to the RIP 
+
+Diagram:
+
+
+beginning of stack frame for function that was just called
+
+stack pointer (rsp) -->   Program counter
+...
+rest of the registers pushed
+
+Question:
+Would it be wrong to just d  mov [rdi + 6*offset]? or would that not work
+because the rip at that point points to the function we jsust called
+
+ 
+src/context_switch.S
+
+
+
+Summary
+
+When we create a Bthread object, we create a stack and a context object 
+and pass in a function pointer.
+
+what we do is we set the context.rsp objects attribute to the top of the stack 
+that was created
+
+ctx.rsp = top; //<---- Important  (from Bthread.hpp)
+
+then what we do is we set:
+
+ctx.rip = (reg_t)thread_trampoline; 
+
+So, when the thread_trampoline funciton begins getting executed, it will
+exist in the function frame we created.  (so we don't have to worry about the 
+function we are running accidentally running from the main thread)
+
+
+So it doesn't start running of course until the scheduler calls the context_switch 
+function in which case it will do the following:
+
+jmp [rsi + 7*offset]         ; rip is last in struct
+
+This sets the PC to the value stored at rsi + 7*offset which is a pointer to the function
+in the text segment of the code.
+
+Now, what this code in the text segment will do is it will activate a function 
+frame that grows downwards starting where the rsp register is set. 
+So it will actually make a new function frame beggining on the stack we made.
+
+
+
+problem: We are only setting the ctx.rsp once, so after we context switch agian, 
+it is still pointing to the thread_trampoline function, so it will literally just
+run the function again without saving the rip register of where it was when it was
+running the start_func(). So the function will run forever and never finish.
+
+    ; Save current instruction pointer (RIP)
+    lea rax, [rip + 0f]          ; address of label 0 (next instruction)
+    mov [rdi + 7*offset], rax
+
+So now, we are saving the RIP so it will return back to where it was inside of the
+start_func() funciton
+
+
+
+Another important point I missed:
+
+what is this for in the Bthread.gpp file?
+ // first argument register
+    ctx.rdi = (reg_t)this;
+
+
+So we actually call thread_trampoline function by doing jmp to the ctx.rip right.
+the issue with this is that we need a way to pass in a paramter
+which is a (Bthread object).
+
+So in assembly when a function is called, the first paramter of the function
+goes into something called the rdi register. So when we do the context switch 
+and we load the ctx.rdi into the RDI register, and then we jmp to the ctx.rip
+which is the thread trampoline funciton, it will use the value in the rdi 
+which is a pointer to the bthread object.
+--> we essentialy just used assembly to pass in a parameter to a function
+    that was not called explicitly, rather by setting the rip.
+
+
+Question:
+
+when a thread is finished, where in the shcedlers code and RAII are we destroying it and removing it from the list?
+
+
+
+
+
+
+
+Static vs dynamic scheduler
+--> we will make it so you have to initalize all the threads at once and then call scheduler->start() on both of them.
+
+
+
+
+
+
+
+
+NEW notes:
+
+    ; Save RIP (resume AFTER context_switch)
+    lea rax, [rip + 1f]
+    mov [rdi + 7*offset], rax
+
+    ;--------------------------------------------
+    ; Restore new thread's registers from new_ctx
+    ;--------------------------------------------
+
+    ...
+
+1:
+    ; When this thread resumes, it lands here
+    ; and context_switch "returns" to yield()
+
+
+So why do: mov [rdi + 7*offset], [rip + 1f]? Because in x86, one of them needs ot be register
+when we do mov, so we needed to use lea.
+
+lea rax, [label] gives us the address of label, but if we did mov instead,
+then mov always gets the value of the thing at the address. 
+so mov destination, thing 
+thing can be 3 things
+#1: constant --> 0x1 for example (just a value)
+#2: register --> r12 for example
+#3: memory --> in this case you need [address] mov des, [address or label]
+but the main idea is that in all cases, mov gets the value at that desintaiton,
+so that is why we used lea to get the address of the label
